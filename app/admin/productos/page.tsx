@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { 
   Package, Plus, Search, Edit3, Trash2, 
   Filter, ChevronDown, Tag, AlertCircle, Loader2, DollarSign
@@ -13,8 +13,7 @@ interface Producto {
   id: string;
   nombre: string;
   descripcion: string;
-  precio: number;
-  precio_bs?: number;
+  precio: number; 
   stock: number;
   imagen_url: string;
   categoria: string;
@@ -41,19 +40,16 @@ export default function ProductosAdminPage() {
     try {
       setLoading(true)
       
-      // 1. Obtener Productos
       const { data: prods, error: pError } = await supabase
         .from('productos')
         .select('*')
         .order('created_at', { ascending: false })
 
-      // 2. Obtener Categorías
       const { data: cats, error: cError } = await supabase
         .from('categorias')
         .select('nombre')
         .order('nombre', { ascending: true })
 
-      // 3. Obtener Tasa de Dólar (datos_empresa)
       const { data: empresa, error: eError } = await supabase
         .from('datos_empresa')
         .select('tasa_dolar')
@@ -62,7 +58,9 @@ export default function ProductosAdminPage() {
       if (pError || cError || eError) throw pError || cError || eError
 
       setProductos(prods || [])
-      setCategorias(cats?.map(c => c.nombre) || [])
+      
+      setCategorias(cats?.map((c: { nombre: string }) => c.nombre) || [])
+      
       if (empresa) setTasaDolar(empresa.tasa_dolar)
 
     } catch (error) {
@@ -90,16 +88,26 @@ export default function ProductosAdminPage() {
     setIsModalOpen(true)
   }
 
-  const filteredProductos = productos.filter(p => {
-    const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (p.categoria && p.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesCategory = filterCategoria === 'Todas' || p.categoria === filterCategoria
-    return matchesSearch && matchesCategory
-  })
+  const filteredProductos = useMemo(() => {
+    return productos.filter(p => {
+      const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (p.categoria && p.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
+      const matchesCategory = filterCategoria === 'Todas' || p.categoria === filterCategoria
+      return matchesSearch && matchesCategory
+    })
+  }, [productos, searchTerm, filterCategoria])
+
+
+  const formatBs = (precioUsd: number) => {
+    const total = precioUsd * tasaDolar
+    return total.toLocaleString('es-VE', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    })
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20">
-      {/* Header Sección */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-orange-100/50 pb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -109,8 +117,6 @@ export default function ProductosAdminPage() {
             <span className="text-sm font-bold text-[#FF5C00] uppercase tracking-widest">Panel de Control</span>
           </div>
           <h2 className="text-5xl font-black text-[#3D1A14] tracking-tight">Inventario</h2>
-          
-          {/* Indicador de Tasa Actual */}
           <div className="flex items-center mt-3 bg-orange-50 border border-orange-100 w-fit px-4 py-2 rounded-2xl shadow-sm">
             <DollarSign size={16} className="text-[#FF5C00] mr-2" />
             <p className="text-[#3D1A14] text-sm font-bold">
@@ -138,7 +144,6 @@ export default function ProductosAdminPage() {
         </div>
       </div>
 
-      {/* Filtros y Buscador */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 relative group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#3D1A14]/40 group-focus-within:text-[#FF5C00] transition-colors" size={20} />
@@ -166,8 +171,6 @@ export default function ProductosAdminPage() {
           <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#3D1A14]/40 pointer-events-none" size={18} />
         </div>
       </div>
-
-      {/* Contenedor de Tabla */}
       <div className="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(255,92,0,0.05)] border border-orange-100/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -226,12 +229,11 @@ export default function ProductosAdminPage() {
                           <span className="text-[#FF5C00] text-sm mr-0.5">$</span>
                           {prod.precio.toFixed(2)}
                         </span>
-                        {/* Badge de Bolívares */}
                         <div className="mt-1 px-2.5 py-0.5 bg-blue-50 border border-blue-100 rounded-lg">
                            <span className="text-[10px] font-black text-blue-600 whitespace-nowrap">
-                            {prod.precio_bs && prod.precio_bs > 0
-                              ? `${Number(prod.precio_bs).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs` 
-                              : `${(prod.precio * tasaDolar).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs`
+                            {tasaDolar > 0 
+                              ? `${formatBs(prod.precio)} Bs` 
+                              : '--- Bs'
                             }
                           </span>
                         </div>
@@ -284,8 +286,6 @@ export default function ProductosAdminPage() {
           </table>
         </div>
       </div>
-
-      {/* Modales */}
       <ModalCategoria 
         isOpen={isCatModalOpen} 
         onClose={() => setIsCatModalOpen(false)} 

@@ -1,7 +1,11 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Users, ShoppingCart, LogOut, Settings, ChevronRight, User } from 'lucide-react'
+import { 
+  LayoutDashboard, Package, Users, ShoppingCart, 
+  LogOut, Settings, ChevronRight, User, ExternalLink, 
+  ShieldCheck, HelpCircle // <-- Importamos el nuevo icono
+} from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -14,37 +18,52 @@ export default function AdminLayout({
   const router = useRouter()
   const pathname = usePathname()
   const [userData, setUserData] = useState<{ name: string, role: string, initials: string } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser()
+      
       if (user) {
-        // Asumiendo que guardas el nombre en user_metadata o usamos el email como fallback
-        const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin Usuario'
-        const role = user.user_metadata?.role || 'Administrador'
+        const { data: profile } = await supabase
+          .from('perfiles')
+          .select('rol, nombre')
+          .eq('id', user.id)
+          .single()
+
+        const role = profile?.rol || 'user'
+        const fullName = profile?.nombre || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Admin Usuario'
         
-        // Lógica para iniciales (Primera letra nombre + Primera letra apellido)
         const names = fullName.split(' ')
         const initials = names.length > 1 
           ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
           : names[0].substring(0, 2).toUpperCase()
 
         setUserData({ name: fullName, role, initials })
+
+        if (pathname.includes('/admin/auditoria') && role !== 'super_user') {
+          router.push('/admin')
+        }
+      } else {
+        router.push('/login')
       }
+      setIsLoading(false)
     }
     getUser()
-  }, [])
+  }, [pathname, router])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await supabase.signOut()
     router.push('/login')
   }
+
+  if (isLoading) return null 
 
   return (
     <div className="fixed inset-0 flex bg-[#FDFCF9] z-[100]">
       
       {/* Sidebar Lateral */}
-      <aside className="w-72 bg-[#3D1A14] text-white p-8 flex flex-col shadow-2xl h-full border-r border-white/5">
+      <aside className="w-72 bg-[#3D1A14] text-white p-8 flex flex-col shadow-2xl h-full border-r border-white/5 overflow-y-auto">
         <div className="mb-12">
           <Link href="/admin" className="flex items-center space-x-3 group">
             <div className="w-12 h-12 bg-gradient-to-br from-[#FFB800] to-[#FF5C00] rounded-2xl flex items-center justify-center text-[#3D1A14] font-black text-2xl shadow-lg group-hover:rotate-6 transition-all duration-300">
@@ -58,12 +77,45 @@ export default function AdminLayout({
         </div>
 
         <nav className="space-y-2 flex-1">
-          <AdminNavItem href="/admin" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={pathname === '/admin'} />
-          <AdminNavItem href="/admin/productos" icon={<Package size={20}/>} label="Productos" active={pathname.includes('/productos')} />
-          <AdminNavItem href="/admin/ventas" icon={<ShoppingCart size={20}/>} label="Ventas" active={pathname.includes('/ventas')} />
-          <AdminNavItem href="/admin/users" icon={<Users size={20}/>} label="Usuarios" active={pathname.includes('/users')} />
-          <div className="pt-4 mt-4 border-t border-white/5">
+          {/* Sección Principal */}
+          <div className="pb-4 mb-4 border-b border-white/5">
+            <p className="text-[10px] font-black text-orange-200/20 uppercase tracking-[0.3em] mb-4 ml-4">Gestión</p>
+            <AdminNavItem href="/admin" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={pathname === '/admin'} />
+            <AdminNavItem href="/admin/productos" icon={<Package size={20}/>} label="Productos" active={pathname.includes('/productos')} />
+            <AdminNavItem href="/admin/ventas" icon={<ShoppingCart size={20}/>} label="Ventas" active={pathname.includes('/ventas')} />
+            <AdminNavItem href="/admin/users" icon={<Users size={20}/>} label="Usuarios" active={pathname.includes('/users')} />
+          </div>
+
+          {/* Sección de Seguridad */}
+          {userData?.role === 'super_user' && (
+            <div className="pb-4 mb-4 border-b border-white/5">
+              <p className="text-[10px] font-black text-orange-200/20 uppercase tracking-[0.3em] mb-4 ml-4">Seguridad</p>
+              <AdminNavItem 
+                href="/admin/auditoria" 
+                icon={<ShieldCheck size={20}/>} 
+                label="Auditoría" 
+                active={pathname.includes('/auditoria')} 
+              />
+            </div>
+          )}
+
+          {/* Sección de Navegación Externa */}
+          <div className="pb-4 mb-4 border-b border-white/5">
+            <p className="text-[10px] font-black text-orange-200/20 uppercase tracking-[0.3em] mb-4 ml-4">Sitio Web</p>
+            <AdminNavItem href="/" icon={<ExternalLink size={20}/>} label="Ver Inicio" active={false} />
+          </div>
+
+          {/* Sección de Sistema / Soporte */}
+          <div>
+            <p className="text-[10px] font-black text-orange-200/20 uppercase tracking-[0.3em] mb-4 ml-4">Sistema</p>
             <AdminNavItem href="/admin/config" icon={<Settings size={20}/>} label="Ajustes" active={pathname.includes('/config')} />
+            {/* NUEVO ITEM: MANUAL DE USUARIO */}
+            <AdminNavItem 
+              href="/admin/manual" 
+              icon={<HelpCircle size={20}/>} 
+              label="Manual de Ayuda" 
+              active={pathname.includes('/manual')} 
+            />
           </div>
         </nav>
 
@@ -78,8 +130,7 @@ export default function AdminLayout({
 
       {/* Contenido Principal */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        
-        {/* Header Mejorado */}
+        {/* Header */}
         <header className="h-24 bg-white/80 backdrop-blur-md border-b border-orange-100/50 px-10 flex items-center justify-between z-10">
           <div className="flex items-center space-x-2 bg-orange-50/50 px-4 py-2 rounded-xl border border-orange-100/50">
               <span className="text-xs font-black text-[#3D1A14]/30 uppercase tracking-widest">Panel</span>
@@ -90,15 +141,14 @@ export default function AdminLayout({
           </div>
           
           <div className="flex items-center">
-            {/* Perfil de Usuario Dinámico */}
             <div className="flex items-center pl-6 border-l border-orange-100 space-x-4 group cursor-default">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-black text-[#3D1A14] leading-none mb-1">
                   {userData?.name || 'Cargando...'}
                 </p>
-                <div className="inline-block px-2 py-0.5 bg-[#FFB800]/10 rounded-md">
-                  <p className="text-[10px] font-black text-[#FFB800] uppercase tracking-tighter">
-                    {userData?.role || 'Admin'}
+                <div className={`inline-block px-2 py-0.5 rounded-md ${userData?.role === 'super_user' ? 'bg-indigo-500/10' : 'bg-[#FFB800]/10'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-tighter ${userData?.role === 'super_user' ? 'text-indigo-600' : 'text-[#FFB800]'}`}>
+                    {userData?.role === 'super_user' ? 'Super Usuario' : (userData?.role || 'Admin')}
                   </p>
                 </div>
               </div>
@@ -110,7 +160,6 @@ export default function AdminLayout({
                   ) : (
                     <User size={20} className="animate-pulse" />
                   )}
-                  {/* Indicador de estado online */}
                   <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                 </div>
               </div>

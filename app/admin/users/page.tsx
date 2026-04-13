@@ -90,8 +90,9 @@ export default function UsersPage() {
     if (error) {
       showToast("Error al actualizar permisos", 'error')
     } else {
+      // Registrar log de auditoría opcional aquí
       setUsuarios(prev => prev.map(u => u.id === id ? { ...u, rol: nuevoRol } : u))
-      showToast("Rol actualizado con éxito")
+      showToast("Nivel de acceso actualizado")
     }
     setConfirmModal(null)
   }
@@ -101,7 +102,7 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 md:p-8 relative overflow-hidden">
       
-      {/* Notificaciones Emergentes */}
+      {/* Notificaciones */}
       <AnimatePresence>
         {toast && (
           <motion.div 
@@ -133,7 +134,7 @@ export default function UsersPage() {
               </div>
               <h3 className="text-2xl font-black text-[#3D1A14] mb-2 uppercase tracking-tight">¿Confirmar Cambio?</h3>
               <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-                Vas a otorgar el rol de <span className="text-[#FF5C00] font-bold uppercase">{confirmModal.nuevoRol}</span> a {confirmModal.nombre}.
+                Vas a otorgar el rol de <span className="text-[#FF5C00] font-bold uppercase">{confirmModal.nuevoRol.replace('_', ' ')}</span> a {confirmModal.nombre}.
               </p>
               <div className="flex gap-4">
                 <button 
@@ -165,7 +166,7 @@ export default function UsersPage() {
               <h1 className="text-3xl font-black text-[#3D1A14] tracking-tight">Control de Personal</h1>
               <p className="text-orange-600 font-bold flex items-center gap-2">
                 <span className="w-2 h-2 bg-orange-600 rounded-full animate-pulse" />
-                Inversiones Durí C.A. • Dashboard Administrativo
+                Inversiones Durí C.A. • Gestión de Accesos
               </p>
             </div>
           </div>
@@ -184,7 +185,6 @@ export default function UsersPage() {
             <button 
               onClick={() => fetchUsuarios(pagina, busqueda)}
               className="p-4 bg-white border-2 border-orange-100 rounded-2xl text-[#3D1A14] hover:bg-orange-50 transition-colors shadow-sm active:scale-95"
-              title="Refrescar lista"
             >
               <RefreshCw size={24} className={loading ? 'animate-spin text-[#FF5C00]' : ''} />
             </button>
@@ -211,7 +211,7 @@ export default function UsersPage() {
                     <td colSpan={4} className="p-32 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <Loader2 className="animate-spin text-[#FF5C00]" size={48} />
-                        <p className="text-[#3D1A14] font-black tracking-widest text-sm">SINCRONIZANDO DATOS...</p>
+                        <p className="text-[#3D1A14] font-black tracking-widest text-sm">SINCRONIZANDO...</p>
                       </div>
                     </td>
                   </tr>
@@ -239,18 +239,19 @@ export default function UsersPage() {
                           user.rol === 'admin' ? 'bg-orange-50 border-orange-200 text-[#FF5C00]' : 'bg-blue-50 border-blue-200 text-blue-700'
                         }`}
                       >
-                        {user.rol === 'super_user' && <option value="super_user">Desarrollador</option>}
-                        <option value="usuario">Usuario (Vendedor)</option>
+                        {/* Alineado con los roles de Supabase */}
+                        <option value="super_user">Super Usuario (Root)</option>
                         <option value="admin">Administrador</option>
+                        <option value="usuario">Vendedor (Estándar)</option>
                       </select>
                     </td>
                     <td className="p-8 text-center">
                       {user.rol === 'super_user' ? (
-                        <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full border border-purple-100 text-[10px] font-black uppercase tracking-widest">Root</span>
+                        <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-full border border-purple-100 text-[10px] font-black uppercase tracking-widest">Acceso Total</span>
                       ) : user.rol === 'admin' ? (
-                        <span className="px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 text-[10px] font-black uppercase tracking-widest">Acceso Total</span>
+                        <span className="px-4 py-2 bg-green-50 text-green-700 rounded-full border border-green-100 text-[10px] font-black uppercase tracking-widest">Gestión</span>
                       ) : (
-                        <span className="px-4 py-2 bg-gray-50 text-gray-400 rounded-full border border-gray-100 text-[10px] font-black uppercase tracking-widest">Estándar</span>
+                        <span className="px-4 py-2 bg-gray-50 text-gray-400 rounded-full border border-gray-100 text-[10px] font-black uppercase tracking-widest">Ventas</span>
                       )}
                     </td>
                   </tr>
@@ -262,13 +263,13 @@ export default function UsersPage() {
           {/* Paginación */}
           <div className="p-6 bg-orange-50/20 border-t border-orange-50 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-[#3D1A14] font-bold text-sm">
-              <span className="text-[#FF5C00]">{totalUsuarios}</span> usuarios registrados
+              <span className="text-[#FF5C00]">{totalUsuarios}</span> usuarios en el sistema
             </p>
             <div className="flex items-center space-x-2">
               <button 
                 disabled={pagina === 0 || loading}
                 onClick={() => setPagina(p => p - 1)}
-                className="p-3 bg-white border-2 border-orange-100 rounded-xl disabled:opacity-30 hover:border-[#FF5C00] transition-all active:scale-95"
+                className="p-3 bg-white border-2 border-orange-100 rounded-xl disabled:opacity-30 hover:border-[#FF5C00] transition-all"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -278,7 +279,7 @@ export default function UsersPage() {
               <button 
                 disabled={!haySiguiente || loading}
                 onClick={() => setPagina(p => p + 1)}
-                className="p-3 bg-white border-2 border-orange-100 rounded-xl disabled:opacity-30 hover:border-[#FF5C00] transition-all active:scale-95"
+                className="p-3 bg-white border-2 border-orange-100 rounded-xl disabled:opacity-30 hover:border-[#FF5C00] transition-all"
               >
                 <ChevronRight size={20} />
               </button>
