@@ -19,18 +19,62 @@ export default function RegisterPage() {
   const [status, setStatus] = useState<{ type: 'error' | 'success', msg: string } | null>(null)
   const router = useRouter()
 
+  // Handlers para validación en tiempo real (Input Masking)
+  const handleNombreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Reemplaza cualquier cosa que NO sea letra o espacio
+    const value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')
+    setNombre(value)
+  }
+
+  const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Reemplaza cualquier cosa que NO sea número
+    const value = e.target.value.replace(/[^0-9]/g, '')
+    setTelefono(value)
+  }
+
+  const validateForm = () => {
+    // 1. Validar Nombre (No vacío y sin números)
+    if (!nombre.trim() || /[\d]/.test(nombre)) {
+      setStatus({ type: 'error', msg: 'El nombre es obligatorio y no puede contener números.' })
+      return false
+    }
+
+    // 2. Validar Teléfono (Mínimo 7 dígitos y solo números)
+    if (telefono.length < 7) {
+      setStatus({ type: 'error', msg: 'Ingresa un número de teléfono válido (solo números).' })
+      return false
+    }
+
+    // 3. Validar Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setStatus({ type: 'error', msg: 'Por favor, ingresa un correo electrónico válido.' })
+      return false
+    }
+
+    // 4. Validar Contraseña
+    if (password.length < 6) {
+      setStatus({ type: 'error', msg: 'La contraseña debe tener al menos 6 caracteres.' })
+      return false
+    }
+
+    return true
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setStatus(null)
+
+    if (!validateForm()) return
+
+    setLoading(true)
     
-    // Enviamos 'full_name' y 'phone_number' en la metadata
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { 
-          full_name: nombre,
+          full_name: nombre.trim(),
           phone_number: telefono 
         }
       }
@@ -42,11 +86,11 @@ export default function RegisterPage() {
     } else {
       setStatus({ 
         type: 'success', 
-        msg: '¡Casi listo! Revisa tu correo para confirmar tu registro y activar tu cuenta.' 
+        msg: '¡Casi listo! Revisa tu correo para confirmar tu registro.' 
       })
       setLoading(false)
       
-      // Limpiar campos tras éxito
+      // Limpiar campos
       setEmail('')
       setPassword('')
       setNombre('')
@@ -57,7 +101,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center p-0 relative overflow-hidden">
       
-      {/* Botón de retorno dinámico */}
       <Link 
         href="/" 
         className="fixed top-6 left-6 z-50 flex items-center gap-2.5 px-5 py-3 bg-white/40 backdrop-blur-md text-[#3D1A14] rounded-full font-bold text-sm transition-all hover:bg-white hover:shadow-lg group shadow-sm border border-white/50"
@@ -68,7 +111,7 @@ export default function RegisterPage() {
 
       <div className="flex w-full max-w-[1200px] h-[850px] bg-white rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(61,26,20,0.15)] overflow-hidden border border-orange-50 animate-in fade-in zoom-in duration-500">
         
-        {/* PANEL IZQUIERDO: Formulario */}
+        {/* PANEL IZQUIERDO */}
         <div className="w-full md:w-1/2 p-10 md:p-14 flex flex-col justify-center overflow-y-auto">
           
           <div className="mb-8 text-left">
@@ -96,9 +139,9 @@ export default function RegisterPage() {
               <div className="relative group">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#FF5C00] transition-colors" size={18} />
                 <input 
-                  type="text" required value={nombre} onChange={(e) => setNombre(e.target.value)}
+                  type="text" required value={nombre} onChange={handleNombreChange}
                   className="w-full pl-14 pr-4 py-4 bg-gray-50 border-2 border-transparent rounded-[1.2rem] focus:border-orange-200 focus:bg-white outline-none transition-all font-bold text-[#3D1A14] placeholder:text-gray-300"
-                  placeholder="Ej. Víctor Pérez"
+                  placeholder="Solo letras"
                 />
               </div>
             </div>
@@ -109,9 +152,9 @@ export default function RegisterPage() {
               <div className="relative group">
                 <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#FF5C00] transition-colors" size={18} />
                 <input 
-                  type="tel" required value={telefono} onChange={(e) => setTelefono(e.target.value)}
+                  type="tel" required value={telefono} onChange={handleTelefonoChange}
                   className="w-full pl-14 pr-4 py-4 bg-gray-50 border-2 border-transparent rounded-[1.2rem] focus:border-orange-200 focus:bg-white outline-none transition-all font-bold text-[#3D1A14] placeholder:text-gray-300"
-                  placeholder="Ej. 0412-1234567"
+                  placeholder="Solo números"
                 />
               </div>
             </div>
@@ -165,7 +208,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* PANEL DERECHO: Fachada e Imagen corporativa */}
+        {/* PANEL DERECHO */}
         <div className="hidden md:block w-1/2 relative group overflow-hidden">
           <Image 
             src="/bg/fachada.jpg" 
