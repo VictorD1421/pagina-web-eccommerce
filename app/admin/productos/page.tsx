@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { 
   Package, Plus, Search, Edit3, Trash2, 
   Filter, ChevronDown, Tag, AlertCircle, Loader2, DollarSign,
-  BookOpen, HelpCircle, X
+  BookOpen, HelpCircle, X, AlertTriangle
 } from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
 import ModalProducto from './components/ModalProduct'
@@ -32,8 +32,6 @@ export default function ProductosAdminPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCatModalOpen, setIsCatModalOpen] = useState(false)
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null)
-  
-  // Nuevo estado para controlar la visibilidad del manual
   const [showManual, setShowManual] = useState(false)
 
   useEffect(() => {
@@ -65,7 +63,7 @@ export default function ProductosAdminPage() {
       if (empresa) setTasaDolar(empresa.tasa_dolar)
 
     } catch (error) {
-      console.error('Error al cargar datos:', error)
+      console.error('Error:', error)
     } finally {
       setLoading(false)
     }
@@ -108,7 +106,6 @@ export default function ProductosAdminPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20">
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-orange-100/50 pb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -120,7 +117,6 @@ export default function ProductosAdminPage() {
           
           <div className="flex items-center gap-4">
             <h2 className="text-5xl font-black text-[#3D1A14] tracking-tight">Inventario</h2>
-            {/* BOTÓN DE AYUDA (MANUAL) */}
             <button 
               onClick={() => setShowManual(!showManual)}
               className={`p-2.5 rounded-2xl transition-all shadow-sm flex items-center gap-2 border ${
@@ -128,7 +124,6 @@ export default function ProductosAdminPage() {
                 ? 'bg-[#FF5C00] text-white border-[#FF5C00]' 
                 : 'bg-white text-[#FF5C00] border-orange-100 hover:bg-orange-50'
               }`}
-              title={showManual ? "Cerrar guía" : "Ver manual de usuario"}
             >
               {showManual ? <X size={20} /> : <HelpCircle size={20} />}
               <span className="text-xs font-bold uppercase tracking-wider">{showManual ? 'Cerrar' : 'Ayuda'}</span>
@@ -162,7 +157,6 @@ export default function ProductosAdminPage() {
         </div>
       </div>
 
-      {/* MINI MANUAL DE USUARIO (VISIBLE SEGÚN EL ESTADO) */}
       {showManual && (
         <section className="animate-in fade-in slide-in-from-top-4 duration-300 bg-gradient-to-br from-white to-orange-50/30 p-6 rounded-[2rem] border-2 border-orange-100 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -176,32 +170,31 @@ export default function ProductosAdminPage() {
             <div className="flex gap-3">
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-[#FF5C00] font-bold text-xs">1</div>
               <p className="text-xs text-[#3D1A14]/70 leading-relaxed">
-                <strong className="text-[#3D1A14] block">Búsqueda:</strong> Usa la barra superior para filtrar por nombre o categoría en tiempo real.
+                <strong className="text-[#3D1A14] block">Búsqueda:</strong> Filtra por nombre o categoría en tiempo real.
               </p>
             </div>
             <div className="flex gap-3">
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-[#FF5C00] font-bold text-xs">2</div>
               <p className="text-xs text-[#3D1A14]/70 leading-relaxed">
-                <strong className="text-[#3D1A14] block">Categorías:</strong> Haz clic en "Gestionar Categorías" para organizar tus productos.
+                <strong className="text-[#3D1A14] block">Categorías:</strong> Organiza tus productos desde el panel dedicado.
               </p>
             </div>
             <div className="flex gap-3">
               <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-[#FF5C00] font-bold text-xs">3</div>
               <p className="text-xs text-[#3D1A14]/70 leading-relaxed">
-                <strong className="text-[#3D1A14] block">Gestión:</strong> En la tabla, usa el icono azul para editar y el rojo para borrar permanentemente.
+                <strong className="text-[#3D1A14] block">Acciones:</strong> Azul para editar información, rojo para eliminar el ítem.
               </p>
             </div>
             <div className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-[#FF5C00] font-bold text-xs">4</div>
+              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600 font-bold text-xs">!</div>
               <p className="text-xs text-[#3D1A14]/70 leading-relaxed">
-                <strong className="text-[#3D1A14] block">Stock:</strong> Si el número aparece en rojo, te quedan menos de 5 unidades.
+                <strong className="text-[#3D1A14] block">Alertas:</strong> El stock en 3 o menos marcará el producto como crítico.
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* Buscador y Filtro */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 relative group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#3D1A14]/40 group-focus-within:text-[#FF5C00] transition-colors" size={20} />
@@ -230,7 +223,6 @@ export default function ProductosAdminPage() {
         </div>
       </div>
 
-      {/* Tabla */}
       <div className="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(255,92,0,0.05)] border border-orange-100/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -246,7 +238,7 @@ export default function ProductosAdminPage() {
             <tbody className="divide-y divide-orange-50">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-32">
+                  <td colSpan={5} className="py-32 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <Loader2 className="animate-spin text-[#FF5C00]" size={40} />
                       <p className="text-[#3D1A14] font-bold animate-pulse">Sincronizando inventario...</p>
@@ -255,7 +247,7 @@ export default function ProductosAdminPage() {
                 </tr>
               ) : filteredProductos.length > 0 ? (
                 filteredProductos.map((prod) => (
-                  <tr key={prod.id} className="hover:bg-[#FFFBF0]/40 transition-all group">
+                  <tr key={prod.id} className={`hover:bg-[#FFFBF0]/40 transition-all group ${prod.stock <= 3 ? 'bg-red-50/30' : ''}`}>
                     <td className="px-10 py-6">
                       <div className="flex items-center space-x-5">
                         <div className="w-16 h-16 bg-orange-50 rounded-2xl overflow-hidden border border-orange-100 shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform">
@@ -291,22 +283,25 @@ export default function ProductosAdminPage() {
                         </span>
                         <div className="mt-1 px-2.5 py-0.5 bg-blue-50 border border-blue-100 rounded-lg">
                            <span className="text-[10px] font-black text-blue-600 whitespace-nowrap">
-                            {tasaDolar > 0 
-                              ? `${formatBs(prod.precio)} Bs` 
-                              : '--- Bs'
-                            }
+                            {tasaDolar > 0 ? `${formatBs(prod.precio)} Bs` : '--- Bs'}
                           </span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex flex-col items-center justify-center">
-                        <span className={`text-sm font-black mb-1 ${prod.stock <= 5 ? 'text-red-600' : 'text-[#3D1A14]'}`}>
-                          {prod.stock} unids.
-                        </span>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {prod.stock <= 3 && <AlertTriangle size={14} className="text-red-600 animate-pulse" />}
+                          <span className={`text-sm font-black ${prod.stock <= 3 ? 'text-red-600' : prod.stock <= 10 ? 'text-orange-600' : 'text-[#3D1A14]'}`}>
+                            {prod.stock} unids.
+                          </span>
+                        </div>
+                        {prod.stock <= 3 && (
+                          <span className="text-[9px] font-black text-red-500 uppercase tracking-tighter mb-1 animate-pulse">Stock Bajo</span>
+                        )}
                         <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                           <div 
-                            className={`h-full transition-all duration-1000 ${prod.stock <= 5 ? 'bg-red-500' : 'bg-green-500'}`}
+                            className={`h-full transition-all duration-1000 ${prod.stock <= 3 ? 'bg-red-600' : prod.stock <= 10 ? 'bg-orange-500' : 'bg-green-500'}`}
                             style={{ width: `${Math.min((prod.stock / 50) * 100, 100)}%` }}
                           ></div>
                         </div>
@@ -317,14 +312,12 @@ export default function ProductosAdminPage() {
                         <button 
                           onClick={() => abrirModalEdicion(prod)} 
                           className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-90"
-                          title="Editar producto"
                         >
                           <Edit3 size={18} />
                         </button>
                         <button 
                           onClick={() => handleEliminar(prod.id, prod.nombre)} 
                           className="p-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm active:scale-90"
-                          title="Eliminar de inventario"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -337,7 +330,7 @@ export default function ProductosAdminPage() {
                   <td colSpan={5} className="py-32 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
                       <AlertCircle size={48} className="text-gray-400" />
-                      <p className="text-xl font-bold text-gray-500">No se encontraron resultados</p>
+                      <p className="text-xl font-bold text-gray-500">No se encontraron productos</p>
                     </div>
                   </td>
                 </tr>
