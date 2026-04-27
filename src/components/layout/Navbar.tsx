@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/src/lib/supabase'
@@ -18,7 +18,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useQueryClient } from '@tanstack/react-query'
 import { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
-// Hooks y Componentes
 import { useCart } from '@/hooks/useCart' 
 import { CartDrawer } from '../product/CartDrawer'    
 
@@ -28,7 +27,6 @@ export const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   
-  // Estados de Usuario con carga controlada
   const [user, setUser] = useState<any>(null)
   const [perfil, setPerfil] = useState<any>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -61,61 +59,59 @@ export const Navbar = () => {
     whatsapp: `https://wa.me/${(process.env.NEXT_PUBLIC_COMPANY_PHONE_1 || '').replace(/\D/g, '')}`
   }
 
-  // 1. Manejo Consolidado de Sesión y Perfil con Tipado Correcto
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('perfiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (data) setPerfil(data)
+    } catch (err) {
+      console.error("Error cargando perfil:", err)
+    } finally {
+      setIsAuthLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    const fetchProfile = async (userId: string) => {
-      try {
-        const { data } = await supabase
-          .from('perfiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle()
-        
-        if (data) setPerfil(data)
-      } catch (err) {
-        console.error("Error cargando perfil:", err)
-      } finally {
+    const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      
+      if (currentUser) {
+        await fetchProfile(currentUser.id)
+      } else {
+        setPerfil(null)
         setIsAuthLoading(false)
+        if (typeof setCartItems === 'function') {
+          setCartItems([])
+        }
+        queryClient.removeQueries({ queryKey: ['cart'] })
+      }
+
+      if (event === 'SIGNED_OUT') {
+        router.push('/')
+        router.refresh()
       }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-        
-        if (currentUser) {
-          await fetchProfile(currentUser.id)
-        } else {
-          setPerfil(null)
-          setIsAuthLoading(false)
-          
-          if (typeof setCartItems === 'function') {
-            setCartItems([])
-          }
-          
-          queryClient.removeQueries({ queryKey: ['cart'] })
-          queryClient.clear() 
-        }
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+      handleAuthChange('INITIAL_SESSION' as AuthChangeEvent, session)
+    })
 
-        if (event === 'SIGNED_OUT') {
-          router.push('/')
-          router.refresh()
-        }
-      }
-    )
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange)
 
     return () => subscription.unsubscribe()
-  }, [router, queryClient, setCartItems])
+  }, [router, queryClient, setCartItems, fetchProfile])
 
-  // 2. Fetch de carrito (solo si el ID de usuario existe)
   useEffect(() => {
     if (user?.id) {
       fetchCartItems()
     }
   }, [user?.id, fetchCartItems])
 
-  // 3. Efectos de UI
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handleScroll)
@@ -138,12 +134,10 @@ export const Navbar = () => {
     await supabase.auth.signOut()
   }
 
-  // Lógica de visualización del nombre
   const userDisplayName = perfil?.nombre 
     ? perfil.nombre.split(' ')[0] 
     : user?.email?.split('@')[0] || 'Cuenta'
 
-  // Verificación de permisos administrativos
   const isAdmin = perfil?.rol === 'admin' || perfil?.rol === 'super_user'
 
   return (
@@ -172,7 +166,6 @@ export const Navbar = () => {
               </motion.div>
             </Link>
 
-            {/* NAV DESKTOP */}
             <div className="hidden lg:flex items-center bg-gray-50/50 border border-gray-100 rounded-full px-2 py-1">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href
@@ -192,7 +185,6 @@ export const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative z-[60]">
-            {/* USER MENU */}
             <div className="relative">
               <button 
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
@@ -224,7 +216,7 @@ export const Navbar = () => {
                         <div className="px-6 py-4 bg-orange-50/50 mx-3 rounded-2xl mb-2">
                           <p className="text-[9px] text-[#FF5C00] font-black uppercase tracking-widest mb-1 flex items-center gap-1">
                             {isAdmin && <ShieldCheck size={10} />}
-                            {perfil?.role || 'Cliente'}
+                            {perfil?.rol || 'Cliente'}
                           </p>
                           <p className="text-sm font-black text-[#3D1A14] truncate">{perfil?.nombre || 'Usuario Durí'}</p>
                           <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
@@ -252,7 +244,6 @@ export const Navbar = () => {
               </AnimatePresence>
             </div>
 
-            {/* CART BUTTON */}
             {user && (
               <button 
                 onClick={() => setIsCartOpen(true)}
@@ -272,7 +263,6 @@ export const Navbar = () => {
               </button>
             )}
 
-            {/* MOBILE TOGGLE */}
             <button 
               className="lg:hidden p-2 text-[#3D1A14] hover:bg-gray-100 rounded-xl transition-colors" 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -282,7 +272,6 @@ export const Navbar = () => {
           </div>
         </div>
 
-        {/* MOBILE MENU */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div 

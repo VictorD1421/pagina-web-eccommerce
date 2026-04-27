@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/src/lib/supabase'
+import { useCallback } from 'react'
 
 export const useCart = (user: any) => {
   const queryClient = useQueryClient()
@@ -38,7 +39,7 @@ export const useCart = (user: any) => {
         if (error) throw error
         return data
       } catch (error: any) {
-        // Si es un error de red (Failed to fetch), intentamos recuperar lo que haya en caché
+        // Si es un error de red, intentamos recuperar lo que haya en caché
         if (error instanceof TypeError || error.message?.includes('fetch')) {
           const cached = queryClient.getQueryData(['cart', user?.id])
           if (cached) return cached
@@ -49,22 +50,23 @@ export const useCart = (user: any) => {
       }
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 10, // 10 minutos (más tiempo para reducir peticiones)
-    gcTime: 1000 * 60 * 30,    // Mantener en memoria 30 min
-    retry: 2,                  // Intentar 2 veces antes de rendirse
-    retryDelay: (attempt) => Math.min(attempt * 2000, 10000), // Espera progresiva (2s, 4s...)
-    refetchOnWindowFocus: false, // Evita disparar peticiones al cambiar de pestaña
+    staleTime: 1000 * 60 * 10, // 10 minutos
+    gcTime: 1000 * 60 * 30,    // 30 min en memoria
+    retry: 1,                  // Reducido a 1 para evitar saturar en caso de error persistente
+    refetchOnWindowFocus: false,
   })
 
   const cartItems = cartData?.items_pedido || []
   const cartId = cartData?.id || null
 
-  // 2. Función setCartItems mejorada
-  const setCartItems = (newData: any[]) => {
+  // 2. FUNCIÓN MEJORADA: useCallback es VITAL para evitar bucles infinitos en el Navbar
+  const setCartItems = useCallback((newData: any[]) => {
+    if (!user?.id) return;
     queryClient.setQueryData(['cart', user?.id], (oldData: any) => {
+      if (!oldData) return { id: null, items_pedido: newData };
       return { ...oldData, items_pedido: newData }
     })
-  }
+  }, [queryClient, user?.id])
 
   // 3. MUTATION: Actualizar cantidad
   const updateQuantityMutation = useMutation({
@@ -138,17 +140,24 @@ export const useCart = (user: any) => {
     }
   }
 
+  // Memorizar las funciones de mutación para que la Navbar no detecte cambios de referencia constantes
+  const updateQuantity = useCallback((itemId: string, newQty: number) => 
+    updateQuantityMutation.mutate({ itemId, newQty }), [updateQuantityMutation])
+
+  const removeItem = useCallback((itemId: string) => 
+    removeItemMutation.mutate(itemId), [removeItemMutation])
+
+  const clearCart = useCallback(() => 
+    clearCartMutation.mutate(), [clearCartMutation])
+
   return { 
     cartItems, 
     loading, 
     fetchCartItems, 
     setCartItems,
-    updateQuantity: (itemId: string, newQty: number) => 
-      updateQuantityMutation.mutate({ itemId, newQty }), 
-    removeItem: (itemId: string) => 
-      removeItemMutation.mutate(itemId), 
-    clearCart: () => 
-      clearCartMutation.mutate(), 
+    updateQuantity,
+    removeItem,
+    clearCart,
     processCheckout 
   }
 }
