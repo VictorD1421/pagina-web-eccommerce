@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   ShoppingBag, Search, Loader2, 
   Box, X, Plus, Minus, CheckCircle2, 
@@ -31,18 +31,21 @@ export default function CatalogoPage() {
   const [quantity, setQuantity] = useState(1)
   const [showToast, setShowToast] = useState(false)
 
-  // 1. QUERY: Usuario
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['user'],
     queryFn: async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error || !user) { router.push('/login'); return null; }
+      const { data: { user } } = await supabase.auth.getUser()
       return user
     },
     staleTime: 1000 * 60 * 5,
   })
 
-  // 2. QUERY: Tasa (Solución al error de componente controlado: valor por defecto 0)
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, userLoading, router])
+
   const { data: tasaDolar = 0 } = useQuery({
     queryKey: ['tasaDolar'],
     queryFn: async () => {
@@ -51,7 +54,6 @@ export default function CatalogoPage() {
     }
   })
 
-  // 3. QUERY: Productos
   const { data: productos = [], isLoading: prodsLoading } = useQuery({
     queryKey: ['productos'],
     queryFn: async () => {
@@ -61,7 +63,6 @@ export default function CatalogoPage() {
     },
   })
 
-  // 4. MUTATION: Carrito
   const addToCartMutation = useMutation({
     mutationFn: async ({ producto, cant }: { producto: Producto, cant: number }) => {
       const { data: pedido } = await supabase.from('pedidos').select('id').eq('usuario_id', user?.id).eq('estado', 'carrito').maybeSingle()
@@ -105,7 +106,6 @@ export default function CatalogoPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFCF9] text-[#3D1A14]">
-      {/* Notificación de Carrito */}
       <AnimatePresence>
         {showToast && (
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
@@ -117,9 +117,7 @@ export default function CatalogoPage() {
         )}
       </AnimatePresence>
 
-      {/* Header con Navbar Integrado */}
       <header className="relative pt-6 pb-44 px-6 overflow-hidden bg-[#3D1A14]">
-        {/* Navbar Superior */}
         <nav className="max-w-7xl mx-auto mb-16 flex items-center justify-between relative z-20">
           <div className="flex items-center gap-3">
              <div className="bg-orange-500 p-2 rounded-xl text-white">
@@ -163,12 +161,9 @@ export default function CatalogoPage() {
         </div>
       </header>
 
-      {/* Contenido Principal */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 -mt-20 relative z-40">
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            
-            {/* Buscador */}
             <div className="md:col-span-7 lg:col-span-8 bg-white/90 backdrop-blur-md p-2 rounded-[2.5rem] shadow-[0_15px_35px_rgba(61,26,20,0.05)] border border-white flex items-center group transition-all focus-within:shadow-orange-100">
               <div className="pl-6 text-[#A0A0A0] group-focus-within:text-orange-500 transition-colors">
                 <Search size={22}/>
@@ -182,7 +177,6 @@ export default function CatalogoPage() {
               />
             </div>
             
-            {/* Tasa del día (Corregido para evitar NaN) */}
             <div className="md:col-span-5 lg:col-span-4 bg-[#FF5C00] p-4 rounded-[2.5rem] flex items-center justify-between px-8 shadow-xl shadow-orange-200 border-2 border-white/20">
                <span className="text-white/60 font-black text-[10px] uppercase tracking-widest">Tasa BCV</span>
                <span className="text-white font-black text-xl italic">
@@ -191,7 +185,6 @@ export default function CatalogoPage() {
             </div>
           </div>
 
-          {/* Categorías */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
             {categorias.map(cat => (
               <button 
@@ -207,7 +200,6 @@ export default function CatalogoPage() {
           </div>
         </div>
 
-        {/* Grid de Productos */}
         <section className="py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {filteredProducts.map((producto, i) => (
             <motion.div 
@@ -256,7 +248,6 @@ export default function CatalogoPage() {
         </section>
       </main>
 
-      {/* Modal de Detalle */}
       <AnimatePresence>
         {selectedProduct && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8">

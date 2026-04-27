@@ -71,7 +71,7 @@ export default function AdminLayout({
             </div>
             <div>
               <h1 className="text-xl font-black tracking-tighter text-white">DURÍ<span className="text-[#FFB800]">ADMIN</span></h1>
-              <p className="text-[10px] text-orange-200/30 uppercase font-black tracking-[0.2em]">Suministros Mariu</p>
+              <p className="text-[10px] text-orange-200/30 uppercase font-black tracking-[0.2em]">DURÍ</p>
             </div>
           </Link>
         </div>
